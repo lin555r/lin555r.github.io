@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>我的低GI餐盘</title>
+    <style>
+        /* 全局样式 */
+        body {
+            font-family: '微软雅黑', sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+
+        /* 标题样式 */
+        .header {
+            text-align: center;
+            margin: 20px 0;
+            color: #4CAF50;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+            animation: fadeIn 1s ease-in;
+        }
+
+        /* 操作提示 */
+        .instruction {
+            text-align: center;
+            color: #666;
+            margin: 15px 0;
+            font-size: 0.9em;
+        }
+
+        /* 分类容器 */
+        .categories {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        /* 食物分类区块 */
+        .category {
+            background: #fff;
+            border-radius: 12px;
+            padding: 15px;
+            box-shadow: 0 3px 6px rgba(0,0,0,0.1);
+        }
+        .category.carbs { border: 2px solid #E6B8AF; }
+        .category.protein { border: 2px solid #9DC3E6; }
+        .category.fiber { border: 2px solid #A9D18E; }
+        .category.fruit { border: 2px solid #FFD966; }
+
+        /* 可拖拽食物项 */
+        .food-item {
+            background: #fff;
+            border-radius: 8px;
+            padding: 10px;
+            margin: 8px 0;
+            cursor: move;
+            transition: transform 0.2s;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .food-item:hover {
+            transform: translateY(-3px);
+        }
+
+        /* 圆形餐盘 */
+        #plate {
+            width: 400px;
+            height: 400px;
+            background: #FFF3CD;
+            border-radius: 50%;
+            margin: 20px auto;
+            padding: 30px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* 营养统计 */
+        .nutrition-summary {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 255, 255, 0.9);
+            padding: 10px 20px;
+            border-radius: 20px;
+            text-align: center;
+        }
+
+        /* 营养信息弹窗 */
+        .nutrition-modal {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 0 25px rgba(0,0,0,0.2);
+            z-index: 1000;
+            min-width: 200px;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+    <h1 class="header">我的低GI餐盘</h1>
+    <div class="instruction">提示：拖放食物到餐盘，双击餐盘中食物可放回原处</div>
+
+    <div class="categories">
+        <div class="category carbs">
+            <h3>碳水化合物 <span class="category-tip">(双击放回)</span></h3>
+            <div class="food-item" draggable="true" data-name="糙米" data-category="carbs">🍚 糙米</div>
+            <div class="food-item" draggable="true" data-name="全麦面包" data-category="carbs">🍞 全麦面包</div>
+        </div>
+        
+        <div class="category protein">
+            <h3>蛋白质 <span class="category-tip">(双击放回)</span></h3>
+            <div class="food-item" draggable="true" data-name="鸡胸肉" data-category="protein">🍗 鸡胸肉</div>
+            <div class="food-item" draggable="true" data-name="三文鱼" data-category="protein">🐟 三文鱼</div>
+        </div>
+        
+        <div class="category fiber">
+            <h3>膳食纤维 <span class="category-tip">(双击放回)</span></h3>
+            <div class="food-item" draggable="true" data-name="西兰花" data-category="fiber">🥦 西兰花</div>
+            <div class="food-item" draggable="true" data-name="菠菜" data-category="fiber">🥬 菠菜</div>
+        </div>
+        
+        <div class="category fruit">
+            <h3>水果 <span class="category-tip">(双击放回)</span></h3>
+            <div class="food-item" draggable="true" data-name="苹果" data-category="fruit">🍎 苹果</div>
+            <div class="food-item" draggable="true" data-name="蓝莓" data-category="fruit">🫐 蓝莓</div>
+        </div>
+    </div>
+
+    <div id="plate">
+        <div class="nutrition-summary">
+            <p>总热量：<span id="totalCalories">0</span> kcal</p>
+            <p>平均GI值：<span id="averageGI">0</span></p>
+        </div>
+    </div>
+
+    <div id="nutritionModal" class="nutrition-modal">
+        <h3 id="foodName"></h3>
+        <p>推荐分量：<span id="servingSize"></span></p>
+        <p>热量：<span id="calories"></span> kcal</p>
+        <p>GI值：<span id="giValue"></span></p>
+        <button onclick="closeModal()" style="margin-top: 15px; padding: 8px 20px;">关闭</button>
+    </div>
+
+    <script>
+        // 营养数据库
+        const nutritionData = {
+            '糙米': { category: 'carbs', serving: '1碗(150g)', calories: 165, gi: 55 },
+            '全麦面包': { category: 'carbs', serving: '2片(80g)', calories: 140, gi: 45 },
+            '鸡胸肉': { category: 'protein', serving: '150g', calories: 165, gi: 0 },
+            '三文鱼': { category: 'protein', serving: '120g', calories: 240, gi: 0 },
+            '西兰花': { category: 'fiber', serving: '1碗(90g)', calories: 35, gi: 15 },
+            '菠菜': { category: 'fiber', serving: '1碗(100g)', calories: 23, gi: 15 },
+            '苹果': { category: 'fruit', serving: '1个(150g)', calories: 78, gi: 36 },
+            '蓝莓': { category: 'fruit', serving: '1杯(150g)', calories: 85, gi: 34 }
+        };
+
+        // 拖放功能
+        document.addEventListener('dragstart', e => {
+            if (e.target.classList.contains('food-item')) {
+                e.dataTransfer.setData('text/plain', e.target.dataset.name);
+            }
+        });
+
+        document.addEventListener('dragover', e => e.preventDefault());
+
+        document.addEventListener('drop', e => {
+            e.preventDefault();
+            if (e.target.id === 'plate') {
+                const foodName = e.dataTransfer.getData('text/plain');
+                const newFood = createFoodItem(foodName);
+                e.target.appendChild(newFood);
+                updateNutritionSummary();
+            }
+        });
+
+        // 双击放回功能
+        document.addEventListener('dblclick', e => {
+            if (e.target.classList.contains('food-item') && e.target.parentElement.id === 'plate') {
+                const foodName = e.target.textContent;
+                const category = nutritionData[foodName].category;
+                const originalCategory = document.querySelector(`.category.${category}`);
+                
+                // 创建新的可拖拽食物项
+                const newItem = createFoodItem(foodName);
+                newItem.draggable = true;
+                
+                // 添加回原分类
+                originalCategory.appendChild(newItem);
+                
+                // 移除餐盘中食物
+                e.target.remove();
+                updateNutritionSummary();
+            }
+        });
+
+        // 创建食物元素
+        function createFoodItem(name) {
+            const food = document.createElement('div');
+            food.className = 'food-item';
+            food.textContent = name;
+            food.dataset.name = name;
+            food.dataset.calories = nutritionData[name].calories;
+            food.dataset.gi = nutritionData[name].gi;
+            food.dataset.category = nutritionData[name].category;
+            food.onclick = showNutrition;
+            return food;
+        }
+
+        // 更新营养统计
+        function updateNutritionSummary() {
+            const foods = document.querySelectorAll('#plate .food-item');
+            let totalCalories = 0, totalGI = 0, giCount = 0;
+            
+            foods.forEach(food => {
+                totalCalories += parseInt(food.dataset.calories);
+                const gi = parseInt(food.dataset.gi);
+                if(gi > 0) {
+                    totalGI += gi;
+                    giCount++;
+                }
+            });
+
+            document.getElementById('totalCalories').textContent = totalCalories;
+            document.getElementById('averageGI').textContent = 
+                giCount > 0 ? (totalGI / giCount).toFixed(1) : 0;
+        }
+
+        // 显示营养详情
+        function showNutrition() {
+            const foodName = this.textContent;
+            const modal = document.getElementById('nutritionModal');
+            const data = nutritionData[foodName];
+            
+            document.getElementById('foodName').textContent = foodName;
+            document.getElementById('servingSize').textContent = data.serving;
+            document.getElementById('calories').textContent = data.calories;
+            document.getElementById('giValue').textContent = data.gi || '-';
+            modal.style.display = 'block';
+        }
+
+        // 关闭弹窗
+        function closeModal() {
+            document.getElementById('nutritionModal').style.display = 'none';
+        }
+    </script>
+</body>
+</html>

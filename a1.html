@@ -1,0 +1,14 @@
+<!-- 示例：BMI计算器 -->
+   <input type="number" id="weight" placeholder="体重(kg)">
+   <input type="number" id="height" placeholder="身高(m)">
+   <button onclick="calculateBMI()">计算</button>
+   <div id="result"></div>
+
+   <script>
+     function calculateBMI() {
+       const weight = parseFloat(document.getElementById('weight').value);
+       const height = parseFloat(document.getElementById('height').value);
+       const bmi = weight / (height * height);
+       document.getElementById('result').innerText = `BMI: ${bmi.toFixed(1)}`;
+     }
+   </script>
